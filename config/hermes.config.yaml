@@ -83,3 +83,12 @@ wake_word:
     # aguanta bien la fonética española: 0.965.
     model: hey_hermes
     inference_framework: ""   # "" = auto -> tflite en macOS ARM64
+
+# ── Logging ──────────────────────────────────────────────────────────────────
+# DEBUG temporalmente mientras se diagnostica el wake word. El bucle _run de
+# tools/wake_word.py se traga los errores de motor en DEBUG
+# ("wake word: engine error"), y también registra ahí las detecciones
+# descartadas por cooldown. Con INFO ambos son invisibles.
+# Vuelve a "INFO" cuando el wake word esté validado: DEBUG llena el log.
+logging:
+  level: "DEBUG"
