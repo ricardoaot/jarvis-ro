@@ -174,6 +174,46 @@ Casi dos órdenes de magnitud entre positivo y negativo. Buena señal de partida
 para el criterio de aceptación, pero **no sustituye a medir con ruido real**:
 esto es voz sintética en una habitación en silencio.
 
+### 2.7 Los modelos de wake word son fonéticamente ingleses
+**Este es el fallo que tumbó el primer intento de la fase 1.** El detector
+arrancaba, el micro entregaba audio, y aun así "hey jarvis" no disparaba nunca.
+
+Los modelos de openWakeWord están entrenados con voz sintética **inglesa**.
+Dicho con fonética española, `hey_jarvis` se queda muy por debajo del umbral.
+Medido con voces de `say` de macOS, cola de silencio y umbral 0.6:
+
+| audio | pico | dispara |
+|---|---|---|
+| "hey jarvis", voz inglesa (Samantha), 16 kHz | 0.999 | sí |
+| "hey jarvis", voz inglesa, 48 kHz → remuestreo | 0.999 | sí |
+| "hey jarvis", voz española (Mónica) | **0.397** | **no** |
+| "hey yarvis" / "hey llarvis" (aproximaciones) | 0.34-0.37 | no |
+
+Las dos primeras filas descartan el remuestreo 48k→16k como causa: da el mismo
+resultado. La variable es la pronunciación.
+
+**Qué modelos aguantan el español** (mismo umbral, voz de Mónica):
+
+| modelo | dicho como | pico | |
+|---|---|---|---|
+| `hey_mycroft` | "hey maicroft" | **1.000** | ✅ |
+| `hey_hermes` | "hey hermes" | **0.965** | ✅ |
+| `alexa` | "alexa" | 0.829 | ⚠️ ver abajo |
+| `hey_rhasspy` | "hey raspi" | 0.851 | ❌ sin racha |
+| `hey_jarvis` | "hey yarvis" | 0.343 | ❌ |
+
+**No uses `alexa`.** Puntúa bien, pero es la peor frase posible para el criterio
+de aceptación: hay anuncios en televisión y aparatos reales que la dicen.
+
+**No bajes `sensitivity` para compensar.** Es la tentación obvia y arruina la
+fase 1: para que 0.397 dispare habría que bajar el umbral a ~0.35, que es
+territorio de ruido, y el objetivo de esta fase es precisamente medir falsos
+positivos. Cambia de modelo, no de umbral.
+
+**Aviso metodológico:** todo esto está medido con TTS, que es un sustituto de
+una voz humana, no la voz humana. Usa `scripts/probar-wake.sh` para ver la
+puntuación real con tu voz antes de decidir.
+
 ---
 
 ## 3. Decisiones de diseño para que el port sea barato

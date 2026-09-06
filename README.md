@@ -62,6 +62,20 @@ iniciarse, así que **no hay que escribir `/wake on` ni `/voice`**. Lanzas
 /wake off        # apagarlo un rato
 ```
 
+### Si no dispara
+
+```bash
+./scripts/probar-wake.sh          # cierra Hermes antes; te enseña la puntuación en vivo
+```
+
+Te dice cuál de las tres causas es: el micro no entrega audio, el modelo no te
+reconoce, o te reconoce pero no cruza el umbral.
+
+La causa más probable es la pronunciación: los modelos están entrenados con
+inglés y "hey jarvis" dicho en español puntúa ~0.40 contra un umbral de 0.60.
+`hey_mycroft` (1.000) y `hey_hermes` (0.965) sí aguantan la fonética española.
+Ver docs/portabilidad.md §2.7.
+
 ### Cambiarla
 
 Ojo con una sutileza: con openWakeWord, el campo `phrase` de la config es solo
