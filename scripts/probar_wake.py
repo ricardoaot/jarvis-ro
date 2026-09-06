@@ -26,7 +26,8 @@ print(f"captura     : {cap_rate} Hz  (bloques de {frame_cap})")
 print(f"motor       : {ww.SAMPLE_RATE} Hz (frames de {frame_engine}) modelo={eng._labels}")
 print(f"umbral      : {umbral}   frames consecutivos necesarios: {need}")
 print()
-print(f"Di 'hey jarvis' varias veces durante {DURACION}s. Ctrl+C para cortar.")
+frase = cfg.get("phrase") or eng._labels[0].replace("_", " ")
+print(f"Di '{frase}' varias veces durante {DURACION}s. Ctrl+C para cortar.")
 print("  nivel = volumen de entrada | punt = puntuación del modelo (0..1)")
 print()
 
@@ -67,7 +68,7 @@ elif max_punt >= umbral:
 elif max_punt > 0.15:
     print("  ⚠️  Te reconoce a medias: es la PRONUNCIACIÓN.")
     print("     Los modelos están entrenados con inglés. Dicho con fonética")
-    print("     española 'hey jarvis' se queda sobre 0.4, y por debajo del umbral.")
+    print("     española una frase inglesa se queda sobre 0.4, bajo el umbral.")
     print()
     print("     NO bajes sensitivity para compensar: para que dispare habría que")
     print("     dejarla en territorio de ruido, y eso arruina la medición de falsos")
@@ -76,5 +77,8 @@ elif max_punt > 0.15:
     print("       hey_hermes   (0.965)")
     print("     Ver docs/portabilidad.md §2.7")
 else:
-    print("  ❌ El modelo no te oye. Si el nivel se movía, es pronunciación o distancia;")
+    print(f"  ❌ Puntuación 0: el modelo cargado es '{eng._labels[0]}'.")
+    print(f"     ¿Dijiste exactamente '{frase}'? Un 0.000 clavado suele ser eso:")
+    print("     estar diciendo una frase distinta a la del modelo.")
+    print("     Si la dijiste bien y el nivel se movía, es pronunciación o distancia;")
     print("     si el nivel estaba plano en 0, es el micrófono.")
