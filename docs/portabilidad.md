@@ -371,10 +371,34 @@ fase 1. Los falsos positivos se cuentan sobre la línea `phrase detected`, que s
 escribe al detectar, antes de nada de esto. El detector dispara de forma fiable
 aunque el turno luego se cuelgue.
 
-**Sin resolver:** por qué el grabador no recibe audio en ese caso. Si la
-mitigación no basta, hace falta reproducir la secuencia con las clases de Hermes
-y Hermes cerrado — hay un `flock` a nivel de máquina que impide levantar un
-segundo detector en paralelo.
+**RESUELTO. Causa real:** en macOS, abrir y cerrar un `InputStream` **mata el
+callback de otro `InputStream` que esté vivo**. No lanza excepción ni levanta
+ningún status flag: el stream sigue "abierto" y su callback simplemente deja de
+invocarse. Reproducido aislado:
+
+| | callbacks en 2.5s | pico |
+|---|---|---|
+| stream persistente recién abierto | 234 | 229 |
+| tras ciclar otro stream 2 veces | **0** | **0** |
+
+Y ahí encajan las dos piezas:
+
+- `AudioRecorder._ensure_stream` crea su `InputStream` **una vez y lo mantiene
+  vivo a propósito** — el comentario dice *"re-opening an InputStream hangs on
+  macOS CoreAudio"*.
+- El detector de wake word abre y cierra **su** stream en cada ciclo.
+
+Así que el primer turno funciona (el grabador nació después de la última pausa)
+y del segundo en adelante graba silencio para siempre. Es también el origen del
+`PaMacCore err='-50'` de §2.8.
+
+**Arreglo** (en `patches/0001-wake-word-fixes.patch`): `_on_wake_word` tira el
+grabador antes de grabar (`shutdown()` + `_voice_recorder = None`) para que se
+construya con un stream nuevo. El miedo de upstream a reabrir no se sostiene
+aquí: medido, **0.19s, sin cuelgue y repetible**. Verificado con las clases de
+Hermes: reutilizando el grabador no captura nada; recreándolo, pico 1202.
+
+Coste: 0.19s añadidos a cada activación por voz.
 
 ---
 

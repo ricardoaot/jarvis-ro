@@ -168,7 +168,7 @@ sin revisar, te da el veredicto contra el criterio de aceptación.
 | `scripts/setup-linux.sh` | Stub del port a Linux. |
 | `scripts/falsos-positivos.sh` | Instrumento de medición de la fase 1. |
 | `scripts/aplicar-parches.sh` | Aplica `patches/` sobre el código de Hermes. |
-| `patches/` | Arreglo del bug #74328. **Repasar tras cada `hermes update`.** |
+| `patches/` | Tres arreglos sobre Hermes. **Repasar tras cada `hermes update`.** |
 | `docs/portabilidad.md` | Qué es específico de macOS y los bugs conocidos. |
 
 ## Decisiones que conviene no revertir sin pensarlo

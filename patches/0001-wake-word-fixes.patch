@@ -1,5 +1,5 @@
 diff --git a/hermes_cli/cli_voice_mixin.py b/hermes_cli/cli_voice_mixin.py
-index 8f2b0eb..0d35e7e 100644
+index 8f2b0eb..fafbdb3 100644
 --- a/hermes_cli/cli_voice_mixin.py
 +++ b/hermes_cli/cli_voice_mixin.py
 @@ -688,6 +688,12 @@ class CLIVoiceMixin:
@@ -23,7 +23,7 @@ index 8f2b0eb..0d35e7e 100644
                  return
  
          _cprint(f"\n{_ACCENT}✦ Wake word detected — listening...{_RST}")
-@@ -720,11 +727,22 @@ class CLIVoiceMixin:
+@@ -720,11 +727,39 @@ class CLIVoiceMixin:
          # Single-utterance capture; VAD auto-stop transcribes and queues for process_loop.
          with self._voice_lock:
              self._voice_mode = True
@@ -35,6 +35,23 @@ index 8f2b0eb..0d35e7e 100644
 +        if self._voice_tts:
 +            self._tts_lease_async(True)  # calienta el motor TTS: si no, la 1a respuesta tarda
          self._voice_continuous = False
++        # PARCHE JARVIS: en macOS, abrir y cerrar el InputStream del wake word MATA
++        # el callback del stream persistente del grabador. Queda "vivo" (sin
++        # excepcion ni status flag) pero deja de recibir bloques, asi que a partir
++        # del segundo "hey hermes" la grabacion capturaba silencio y nunca llegaba
++        # a Speech confirmed / Silence detected: el turno se colgaba para siempre.
++        # Reproducido aislado: 234 callbacks antes de ciclar, 0 despues.
++        # AudioRecorder._ensure_stream reutiliza el stream a proposito ("re-opening
++        # an InputStream hangs on macOS CoreAudio"), asi que hay que tirar el
++        # grabador entero para que construya uno nuevo. Medido aqui: 0.19s, sin
++        # cuelgue y repetible. Ver docs/portabilidad.md §2.12.
++        _rec = getattr(self, "_voice_recorder", None)
++        if _rec is not None:
++            try:
++                _rec.shutdown()
++            except Exception as e:
++                logger.debug("wake word: recorder shutdown failed: %s", e)
++            self._voice_recorder = None
          try:
              self._voice_start_recording()
          except Exception as e:
@@ -46,7 +63,7 @@ index 8f2b0eb..0d35e7e 100644
  
      def _start_wake_watchdog(self):
          """Resume the paused detector when the CLI returns to a stable idle."""
-@@ -745,6 +763,10 @@ class CLIVoiceMixin:
+@@ -745,6 +780,10 @@ class CLIVoiceMixin:
                          self._agent_running
                          or self._voice_recording
                          or getattr(self, "_voice_processing", False)
