@@ -17,5 +17,22 @@ model:
   provider: "anthropic"
   default: "anthropic/claude-haiku-4.5"
 
-# ── Fase 1: STT / TTS / wake word ────────────────────────────────────────────
+# ── STT: Whisper local ───────────────────────────────────────────────────────
+# provider "local" = faster-whisper en la máquina. Sin API key, sin red.
+# El modelo "base" (~150MB) se descarga solo en la primera transcripción.
+stt:
+  enabled: true
+  provider: "local"
+  # OJO: el default del código es "en". Sin esta línea, el español se
+  # transcribiría forzado a inglés. Cambia a "" para autodetectar.
+  language: "es"
+  local:
+    model: "base"          # tiny | base | small | medium | large-v3 | turbo
+    # vad: true por defecto (Silero) — filtra silencio y evita que whisper
+    # alucine texto a partir de ruido. Importante para la fase 4.
+
+# ── TTS / wake word ──────────────────────────────────────────────────────────
 # Se añaden al validar cada fase, no antes.
+#
+# AVISO para la fase 3: el default de tts.provider es "edge", que es TTS de RED.
+# Hay que sobrescribirlo explícitamente a "piper" (local).

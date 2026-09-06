@@ -23,8 +23,8 @@ que se está validando es si la wake word aguanta ruido de fondo real.
 | Instalación de Hermes (v0.21.0) | ✅ hecho |
 | Config versionada + secretos externalizados | ✅ hecho |
 | Responde por texto | ✅ hecho — `anthropic/claude-haiku-4.5` |
-| STT (Whisper local) | ⏳ siguiente |
-| TTS (Piper local) | ⬜ no empezado |
+| STT (Whisper local) | 🟡 pipeline validado, falta prueba con micro en vivo |
+| TTS (Piper local) | ⏳ siguiente |
 | Wake word + medición de falsos positivos | ⬜ no empezado |
 
 **Criterio de aceptación de la fase 1:** un día completo de uso normal (música,
