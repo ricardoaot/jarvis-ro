@@ -334,6 +334,48 @@ sección que fija la regla: responder siempre en el idioma de la entrada.
 Verificado: "¿qué hora es en Perú?" responde en español, "what time is it in
 Peru?" en inglés.
 
+### 2.12 El turno de voz se cuelga a partir del segundo "hey hermes"
+**Síntoma:** el primer turno tras arrancar funciona entero. En el siguiente el
+wake word detecta, suena el aviso, aparece `● Recording...` y ahí se queda: no
+llega `Speech confirmed` ni `Silence detected`, así que nunca transcribe.
+
+En el log se ve exactamente así:
+
+```
+turno bueno:  Voice recording started -> Speech confirmed -> Silence detected
+turno malo:   Voice recording started -> (nada más)
+```
+
+El grabador arranca pero no recibe audio.
+
+**Descartado por medición:**
+- No son instancias huérfanas peleando por el micro: solo hay un proceso.
+- No es que el stream persistente del grabador muera al ciclar el del wake word
+  encima: reproducido aislado, el persistente sigue oyendo (pico 230 -> 197).
+- No es la carrera de §2.10: ese patrón desapareció del log tras el parche.
+
+**Mitigación aplicada:** `wake_word.start_new_session: false`.
+
+Con `true`, `_on_wake_word` llama a `new_session()` **entre** soltar el micro y
+arrancar la grabación, y esa llamada es lenta: cierra la sesión anterior, vuelca
+memoria y escribe en SQLite. Medido en el log, el hueco crecía con la sesión —
+1.05s en el primer turno, 2.3s en el segundo— y es justo donde el turno se
+rompe. Quitándola, la transición es inmediata.
+
+Efecto secundario, deseable aquí: la conversación continúa en una sola sesión en
+vez de empezar de cero en cada "hey hermes", que para un asistente es más
+natural.
+
+**Nota para el criterio de aceptación:** este fallo NO bloquea la medición de la
+fase 1. Los falsos positivos se cuentan sobre la línea `phrase detected`, que se
+escribe al detectar, antes de nada de esto. El detector dispara de forma fiable
+aunque el turno luego se cuelgue.
+
+**Sin resolver:** por qué el grabador no recibe audio en ese caso. Si la
+mitigación no basta, hace falta reproducir la secuencia con las clases de Hermes
+y Hermes cerrado — hay un `flock` a nivel de máquina que impide levantar un
+segundo detector en paralelo.
+
 ---
 
 ## 3. Decisiones de diseño para que el port sea barato

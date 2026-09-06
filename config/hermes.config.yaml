@@ -74,7 +74,13 @@ wake_word:
   enabled: true
   provider: openwakeword
   phrase: "hey hermes"        # etiqueta; la detección la fija el modelo
-  start_new_session: true
+  # false a propósito. Con true, _on_wake_word llama a new_session() ANTES de
+  # arrancar la grabación, y esa llamada es lenta (cierra sesión, vuelca memoria,
+  # escribe en la base de datos). Ese retraso entre soltar el micro y empezar a
+  # grabar es donde se cuelga el turno. Ver portabilidad §2.10 y §2.12.
+  # Efecto secundario, deseable aquí: la conversación continúa en una sola
+  # sesión en vez de empezar de cero en cada "hey hermes".
+  start_new_session: false
   # ── Palancas contra falsos positivos (criterio de aceptación: <3 al día) ──
   sensitivity: 0.6            # 0.0-1.0. MÁS ALTO = MÁS ESTRICTO. Sube a 0.8.
   confirmation_frames: 3      # frames consecutivos sobre umbral. Sube a 4-5.
