@@ -1,0 +1,10 @@
+# Secretos — nunca versionar
+.env
+*.key
+
+# Datos locales de medición (fase 1)
+data/
+*.jsonl
+
+# Ruido del sistema
+.DS_Store

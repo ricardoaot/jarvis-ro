@@ -1,0 +1,21 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Jarvis — configuración de Hermes Agent (versionada)
+#
+# Este fichero es la fuente de verdad. ~/.hermes/config.yaml es un symlink aquí.
+# Hermes usa valores por defecto para todo lo que no aparezca; la plantilla
+# completa que genera el instalador queda en ~/.hermes/config.yaml.installer-template
+# como referencia para diffs al actualizar.
+#
+# SIN SECRETOS. La API key se inyecta desde el entorno (ver scripts/jarvis.sh).
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ── Cerebro ──────────────────────────────────────────────────────────────────
+# Anthropic directo con API key por tokens.
+# NO usar provider "nous" ni `hermes setup --portal`: eso es OAuth de
+# suscripción, y Hermes factura ese uso como "extra usage" aparte de la cuota.
+model:
+  provider: "anthropic"
+  default: "anthropic/claude-haiku-4.5"
+
+# ── Fase 1: STT / TTS / wake word ────────────────────────────────────────────
+# Se añaden al validar cada fase, no antes.
