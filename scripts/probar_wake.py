@@ -32,6 +32,7 @@ print("  nivel = volumen de entrada | punt = puntuación del modelo (0..1)")
 print()
 
 max_punt, disparos, frames = 0.0, 0, 0
+ultimo_disparo = 0.0
 t0 = time.time()
 try:
     with sd.InputStream(samplerate=cap_rate, channels=1, dtype="int16",
@@ -52,8 +53,18 @@ try:
             eng._confirm_streak = eng._confirm_streak + 1 if punt >= umbral else 0
             if eng._confirm_streak >= need:
                 eng._confirm_streak = 0
-                disparos += 1
-                print(f"\r  ✦ ¡DISPARO! (punt={punt:.3f})" + " " * 30)
+                ahora = time.time()
+                if ahora - ultimo_disparo < ww._FIRE_COOLDOWN_SECONDS:
+                    # Hermes ignora disparos dentro del cooldown (_fire()).
+                    print(f"\r  · repetición dentro del cooldown, ignorada" + " " * 25)
+                else:
+                    ultimo_disparo = ahora
+                    disparos += 1
+                    print(f"\r  ✦ ¡DISPARO! (punt={punt:.3f})" + " " * 30)
+                # Hermes pausa el detector al disparar y lo reanuda después, lo
+                # que limpia el búfer de features. Sin esto el audio viejo se
+                # queda dentro y ahoga las detecciones siguientes.
+                eng.reset()
             nivel = int(abs(frame).max())
             barra = "█" * min(30, nivel // 200)
             marca = "  <-- SOBRE UMBRAL" if punt >= umbral else ""
