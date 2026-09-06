@@ -44,11 +44,43 @@ except Exception as e:
     print(f"  ✗ start_listening falló: {type(e).__name__}: {e}")
     raise SystemExit(1)
 
+# Instrumentar el motor REAL que acaba de construir start_listening, para ver
+# qué puntuaciones y qué niveles de audio está viendo él (y no una réplica).
+espia = {"frames": 0, "max_punt": 0.0, "max_nivel": 0, "sobre_umbral": 0}
+det = ww._detector
+if det is not None:
+    _predict_original = det.engine._model.predict
+    umbral = det.engine._threshold
+
+    def predict_espiado(frame, *a, **kw):
+        r = _predict_original(frame, *a, **kw)
+        try:
+            p = max(r.values())
+            espia["frames"] += 1
+            espia["max_punt"] = max(espia["max_punt"], p)
+            espia["max_nivel"] = max(espia["max_nivel"], int(abs(frame).max()))
+            if p >= umbral:
+                espia["sobre_umbral"] += 1
+        except Exception:
+            pass
+        return r
+
+    det.engine._model.predict = predict_espiado
+    print(f"  (motor real instrumentado; umbral efectivo {umbral})\n")
+else:
+    print("  ⚠ no se pudo acceder al detector para instrumentarlo\n")
+
 try:
     time.sleep(DURACION)
 finally:
     ww.stop_listening(owner=duenyo)
 
+print()
+print("LO QUE VIO EL MOTOR REAL:")
+print(f"  frames procesados   : {espia['frames']}")
+print(f"  nivel máximo audio  : {espia['max_nivel']}   (<=10 sería silencio)")
+print(f"  puntuación máxima   : {espia['max_punt']:.3f}")
+print(f"  frames sobre umbral : {espia['sobre_umbral']}")
 print()
 print(f"RESULTADO: {len(disparos)} disparos del callback de producción.")
 if disparos:
