@@ -400,6 +400,34 @@ Hermes: reutilizando el grabador no captura nada; recreándolo, pico 1202.
 
 Coste: 0.19s añadidos a cada activación por voz.
 
+### 2.13 La autodetección de idioma de Whisper no sirve para frases cortas
+`stt.language: ""` (autodetección) parecía la forma limpia de tener STT bilingüe.
+No lo es. Sobre las frases cortas de un asistente de voz, Whisper `base` acierta
+el idioma de forma inconsistente. En el log, sobre la misma voz y la misma
+persona:
+
+```
+lang=es lang=es lang=es lang=es lang=es lang=es lang=en lang=es lang=en lang=en
+```
+
+Cuando el audio es flojo es peor: medido sobre una grabación fallida, la
+detección devolvía `en` con confianza **0.59** con `base` y **0.39** con `small`
+—apenas por encima del azar— y por defecto cae a inglés.
+
+El síntoma para el usuario es "no me entiende si hablo español", porque una vez
+elegido el idioma equivocado la transcripción sale inservible.
+
+**Arreglo:** `stt.language: "es"`, fijo.
+
+**Coste asumido:** el STT deja de entender inglés. Es aceptable aquí porque la
+voz de TTS es española (§2.5): una respuesta en inglés se locutaría con fonética
+española de todas formas. Subir a `small` no lo arregla —la confianza sigue
+siendo mala— y añade latencia.
+
+Si algún día hace falta bilingüe de verdad, la vía no es la autodetección de
+Whisper sino un clasificador de idioma aparte, o dos wake words distintas que
+fijen el idioma cada una.
+
 ---
 
 ## 3. Decisiones de diseño para que el port sea barato

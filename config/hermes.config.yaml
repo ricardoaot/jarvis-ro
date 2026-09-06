@@ -25,9 +25,17 @@ model:
 stt:
   enabled: true
   provider: "local"
-  # "" = autodetecta idioma (bilingüe ES/EN). El default del código es "en",
-  # así que esta línea es obligatoria: sin ella el español iría forzado a inglés.
-  language: ""
+  # FIJADO A ESPAÑOL a propósito. Estuvo en "" (autodetección bilingüe) y fue
+  # una regresión: Whisper detecta el idioma sobre frases cortas y se equivoca
+  # a menudo. Visto en el log, alternaba lang=es / lang=en sobre la misma voz, y
+  # cuando el audio es flojo cae a inglés por defecto (medido: confianza 0.59 y
+  # 0.39, apenas por encima del azar). El resultado es que "no te entiende".
+  #
+  # El default del código es "en", así que esta línea es obligatoria igualmente.
+  #
+  # Coste: el STT ya no entiende inglés. Se asume: la voz de TTS es española, y
+  # una respuesta en inglés se locutaría con fonética española de todos modos.
+  language: "es"
   local:
     model: "base"          # tiny | base | small | medium | large-v3 | turbo
     # vad: true por defecto (Silero) — filtra silencio y evita que whisper
