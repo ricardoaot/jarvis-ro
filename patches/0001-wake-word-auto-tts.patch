@@ -1,8 +1,29 @@
 diff --git a/hermes_cli/cli_voice_mixin.py b/hermes_cli/cli_voice_mixin.py
-index 8f2b0eb..6b64dd5 100644
+index 8f2b0eb..0d35e7e 100644
 --- a/hermes_cli/cli_voice_mixin.py
 +++ b/hermes_cli/cli_voice_mixin.py
-@@ -720,6 +720,13 @@ class CLIVoiceMixin:
+@@ -688,6 +688,12 @@ class CLIVoiceMixin:
+             logger.debug("wake word pause failed: %s", e)
+             return
+         self._wake_suspended = True
++        # PARCHE JARVIS: cerrojo para el hueco entre pausar el detector y que
++        # _voice_recording pase a True. new_session() puede tardar mas de los
++        # 0.75s que el watchdog espera antes de reanudar, y si reanuda aqui el
++        # detector reabre el microfono justo cuando la grabacion va a usarlo:
++        # los dos streams se pelean y la grabacion se queda colgada.
++        self._wake_arming = True
+ 
+         # The CLI is single-profile: a phrase enrolled by ANOTHER profile can't be routed
+         # here — print the switch command and re-arm rather than answer as the wrong profile.
+@@ -702,6 +708,7 @@ class CLIVoiceMixin:
+                 _cprint(f"\n{_DIM}Wake phrase for profile '{_match[1]}' — "
+                         f"run: hermes -p {_match[1]}{_RST}")
+                 self._wake_suspended = True  # watchdog resumes the listener
++                self._wake_arming = False    # PARCHE JARVIS: soltar el cerrojo
+                 return
+ 
+         _cprint(f"\n{_ACCENT}✦ Wake word detected — listening...{_RST}")
+@@ -720,11 +727,22 @@ class CLIVoiceMixin:
          # Single-utterance capture; VAD auto-stop transcribes and queues for process_loop.
          with self._voice_lock:
              self._voice_mode = True
@@ -16,3 +37,23 @@ index 8f2b0eb..6b64dd5 100644
          self._voice_continuous = False
          try:
              self._voice_start_recording()
+         except Exception as e:
+             _cprint(f"{_DIM}Wake capture failed: {e}{_RST}")
++        finally:
++            # PARCHE JARVIS: soltar el cerrojo. A partir de aqui manda
++            # _voice_recording, que ya esta puesto si la grabacion arrancó.
++            self._wake_arming = False
+ 
+     def _start_wake_watchdog(self):
+         """Resume the paused detector when the CLI returns to a stable idle."""
+@@ -745,6 +763,10 @@ class CLIVoiceMixin:
+                         self._agent_running
+                         or self._voice_recording
+                         or getattr(self, "_voice_processing", False)
++                        # PARCHE JARVIS: no reanudar mientras _on_wake_word esta
++                        # abriendo la grabacion; si no, el detector reabre el
++                        # microfono encima y la grabacion se cuelga.
++                        or getattr(self, "_wake_arming", False)
+                         or not self._pending_input.empty())
+                     if busy:
+                         idle_polls = 0

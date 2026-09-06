@@ -278,6 +278,62 @@ Un factor de quince. Antes de tocar `sensitivity` o cambiar de modelo,
 comprueba el nivel: si ronda los cientos en vez de los miles, el problema es la
 distancia al micrófono, no la configuración.
 
+### 2.10 Carrera entre el watchdog del wake word y la grabación
+**Síntoma:** el primer turno de voz funciona; en alguno posterior el wake word
+detecta, aparece `● Recording...` y ahí se queda para siempre.
+
+**Causa.** `_on_wake_word` pausa el detector para soltar el micro, y después
+llama a `new_session()` antes de arrancar la grabación. Mientras tanto el
+watchdog (`_start_wake_watchdog`) comprueba cada 0.25s si la CLI está ociosa:
+
+```python
+busy = (self._agent_running or self._voice_recording
+        or getattr(self, "_voice_processing", False)
+        or not self._pending_input.empty())
+```
+
+Ninguna de esas banderas está puesta todavía durante ese hueco. Si
+`new_session()` tarda más de los ~0.75s que el watchdog espera, **reanuda el
+detector**, que reabre el micrófono justo cuando la grabación va a usarlo. Los
+dos streams se pelean y la grabación se cuelga.
+
+Visto en el log, el turno que falla:
+
+```
+00:33:01,459  wake word: stream closed        <- pausa (correcto)
+00:33:02,034  wake word: opening microphone   <- el watchdog reanuda
+00:33:03,614  Voice recording started         <- micro ya ocupado -> cuelgue
+```
+
+Y el turno que funciona, sin reanudación intermedia:
+
+```
+00:32:21,452  wake word: stream closed
+00:32:22,492  Voice recording started
+00:32:24,124  Speech confirmed
+```
+
+**Arreglo** (en `patches/0001-wake-word-auto-tts.patch`): un cerrojo
+`_wake_arming` que `_on_wake_word` levanta al pausar el detector y suelta en un
+`finally` tras arrancar la grabación; el watchdog lo añade a su comprobación de
+`busy`. Cierra el hueco sin tocar `_voice_processing`, que la barra de estado y
+el manejo de teclas usan para otra cosa.
+
+Es el mismo tipo de fallo que §2.2 y probablemente merezca un issue upstream.
+
+### 2.11 Responde en inglés a preguntas en español
+`~/.hermes/SOUL.md` —el prompt de persona que instala Hermes— está escrito en
+inglés. Con entradas cortas, y especialmente en modo voz donde la transcripción
+llega sin marcas de idioma, eso arrastra las respuestas al inglés aunque
+preguntes en español.
+
+**Arreglo:** `SOUL.md` pasa a estar versionado en `config/SOUL.md` (con
+`~/.hermes/SOUL.md` como symlink, igual que `config.yaml`) y se le añade una
+sección que fija la regla: responder siempre en el idioma de la entrada.
+
+Verificado: "¿qué hora es en Perú?" responde en español, "what time is it in
+Peru?" en inglés.
+
 ---
 
 ## 3. Decisiones de diseño para que el port sea barato

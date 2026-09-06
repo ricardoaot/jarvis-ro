@@ -160,6 +160,7 @@ sin revisar, te da el veredicto contra el criterio de aceptación.
 | Ruta | Qué es |
 |---|---|
 | `config/hermes.config.yaml` | Config de Hermes, versionada. `~/.hermes/config.yaml` es un symlink aquí. |
+| `config/SOUL.md` | Prompt de persona, versionado. Fija que responda en tu idioma. |
 | `.env` | El único sitio donde vive la API key. Ignorado por git. |
 | `.env.example` | Plantilla versionada, con las variables vacías. |
 | `scripts/jarvis.sh` | Lanzador: exporta `.env` al entorno y arranca Hermes. |

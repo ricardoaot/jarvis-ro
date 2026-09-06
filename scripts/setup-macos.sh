@@ -53,6 +53,13 @@ link_config() {
   fi
   ln -sfn "$target" "$HERMES_HOME/config.yaml"
   ok "config enlazada: ~/.hermes/config.yaml -> config/hermes.config.yaml"
+  # SOUL.md es el prompt de persona. El que instala Hermes está en inglés y
+  # arrastra las respuestas al inglés aunque preguntes en español.
+  if [ -f "$HERMES_HOME/SOUL.md" ] && [ ! -L "$HERMES_HOME/SOUL.md" ]; then
+    cp "$HERMES_HOME/SOUL.md" "$HERMES_HOME/SOUL.md.installer-template"
+  fi
+  ln -sfn "$REPO_ROOT/config/SOUL.md" "$HERMES_HOME/SOUL.md"
+  ok "persona enlazada: ~/.hermes/SOUL.md -> config/SOUL.md"
 }
 
 # ── 4. Secretos ──────────────────────────────────────────────────────────────
