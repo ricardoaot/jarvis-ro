@@ -25,7 +25,7 @@ que se está validando es si la wake word aguanta ruido de fondo real.
 | Responde por texto | ✅ hecho — `anthropic/claude-haiku-4.5` |
 | STT (Whisper local) | ✅ hecho — bilingüe ES/EN por autodetección |
 | TTS (Piper local) | ✅ hecho — voz `es_ES-davefx-medium`, 0.66s |
-| Wake word (`hey jarvis`) | ✅ montado — falta la medición de un día |
+| Wake word (`hey hermes`) | ✅ montado y verificado con voz |
 | Medición de falsos positivos | ⏳ **te toca a ti**: un día de uso normal |
 
 **Criterio de aceptación de la fase 1:** un día completo de uso normal (música,
@@ -51,7 +51,10 @@ En Linux: `scripts/setup-linux.sh` es un **stub sin probar**. Léelo junto a
 
 ## La palabra de activación
 
-Ahora mismo es **"hey jarvis"**.
+Ahora mismo es **"hey hermes"**.
+
+Se eligió tras medir: `hey_jarvis` no funciona con pronunciación española
+(0.23 con voz real contra un umbral de 0.60). Ver docs/portabilidad.md §2.7.
 
 Arranca sola: `wake_word.enabled: true` hace que la CLI levante el detector al
 iniciarse, así que **no hay que escribir `/wake on` ni `/voice`**. Lanzas
@@ -86,8 +89,8 @@ Modelos entrenados disponibles sin hacer nada:
 
 | `model:` | dices |
 |---|---|
-| `hey_jarvis` | "hey jarvis" ← actual |
-| `hey_hermes` | "hey hermes" (lo trae Hermes) |
+| `hey_jarvis` | "hey jarvis" — ⚠️ solo con acento inglés |
+| `hey_hermes` | "hey hermes" ← **actual**, lo trae Hermes de serie |
 | `alexa` | "alexa" |
 | `hey_mycroft` | "hey mycroft" |
 | `hey_rhasspy` | "hey rhasspy" |

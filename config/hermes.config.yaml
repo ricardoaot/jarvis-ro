@@ -71,11 +71,15 @@ voice:
 wake_word:
   enabled: true
   provider: openwakeword
-  phrase: "hey jarvis"        # etiqueta; la detección la fija el modelo
+  phrase: "hey hermes"        # etiqueta; la detección la fija el modelo
   start_new_session: true
   # ── Palancas contra falsos positivos (criterio de aceptación: <3 al día) ──
   sensitivity: 0.6            # 0.0-1.0. MÁS ALTO = MÁS ESTRICTO. Sube a 0.8.
   confirmation_frames: 3      # frames consecutivos sobre umbral. Sube a 4-5.
   openwakeword:
-    model: hey_jarvis
+    # hey_jarvis NO sirve aquí: entrenado con inglés, con voz española puntúa
+    # ~0.23-0.40 contra el umbral 0.60 y no dispara nunca. Ver portabilidad §2.7.
+    # hey_hermes es el modelo que Hermes trae de serie (tools/wakewords/) y
+    # aguanta bien la fonética española: 0.965.
+    model: hey_hermes
     inference_framework: ""   # "" = auto -> tflite en macOS ARM64
