@@ -49,6 +49,58 @@ always-on.
 En Linux: `scripts/setup-linux.sh` es un **stub sin probar**. Léelo junto a
 [docs/portabilidad.md](docs/portabilidad.md) antes de intentar el port.
 
+## La palabra de activación
+
+Ahora mismo es **"hey jarvis"**.
+
+Arranca sola: `wake_word.enabled: true` hace que la CLI levante el detector al
+iniciarse, así que **no hay que escribir `/wake on` ni `/voice`**. Lanzas
+`./scripts/jarvis.sh`, dices "hey jarvis", y te contesta hablando.
+
+```
+/wake status     # ver estado del detector
+/wake off        # apagarlo un rato
+```
+
+### Cambiarla
+
+Ojo con una sutileza: con openWakeWord, el campo `phrase` de la config es solo
+una **etiqueta cosmética**. Quien detecta es el *modelo*, así que cambiar la
+frase significa cambiar `openwakeword.model`.
+
+Modelos entrenados disponibles sin hacer nada:
+
+| `model:` | dices |
+|---|---|
+| `hey_jarvis` | "hey jarvis" ← actual |
+| `hey_hermes` | "hey hermes" (lo trae Hermes) |
+| `alexa` | "alexa" |
+| `hey_mycroft` | "hey mycroft" |
+| `hey_rhasspy` | "hey rhasspy" |
+
+Cambias las dos líneas en `config/hermes.config.yaml` y reinicias:
+
+```yaml
+wake_word:
+  phrase: "hey mycroft"
+  openwakeword:
+    model: hey_mycroft
+```
+
+**¿Y una frase totalmente tuya?** Tres caminos, de menos a más lío:
+
+1. **Porcupine** — trae `jarvis` entre sus keywords integradas y acepta ficheros
+   `.ppn` propios. Necesita `PORCUPINE_ACCESS_KEY` (gratis) en `.env`; la
+   detección sigue siendo on-device. Ya está la variable en `.env.example`.
+2. **sherpa** — vocabulario abierto: escribes cualquier frase y la tokeniza al
+   vuelo. Pero es **solo inglés** y no tiene `confirmation_frames`, que es la
+   mejor palanca contra falsos positivos. Mal cambio para la fase 1.
+3. **Entrenar un modelo openWakeWord propio** y apuntar `model:` a tu `.onnx`.
+   Es lo que da mejor resultado y lo que más cuesta.
+
+Si los falsos positivos se disparan, prueba primero a subir `sensitivity` y
+`confirmation_frames` antes de cambiar de frase.
+
 ## Medir los falsos positivos (el objetivo de la fase 1)
 
 Esto es lo único que queda por validar, y no lo puede hacer la máquina sola:
@@ -74,19 +126,6 @@ El script cuenta disparos; cuáles fueron falsos lo decides tú, porque saber si
 dijiste "hey jarvis" a propósito no está en ningún log. Cuando no quede ninguno
 sin revisar, te da el veredicto contra el criterio de aceptación.
 
-### ⚠️ Antes de empezar el día de medición
-
-Por el bug [hermes-agent#74328](https://github.com/NousResearch/hermes-agent/issues/74328),
-los turnos lanzados por wake word **salen mudos**. Nada más arrancar, escribe
-una vez:
-
-```
-/voice
-```
-
-Eso deja el TTS activo para el resto de la sesión. Sin ese paso Jarvis te
-entiende y te responde, pero por escrito. Ver docs/portabilidad.md §2.2.
-
 ## Cómo está organizado
 
 | Ruta | Qué es |
@@ -98,6 +137,8 @@ entiende y te responde, pero por escrito. Ver docs/portabilidad.md §2.2.
 | `scripts/setup-macos.sh` | Instalación idempotente en macOS. |
 | `scripts/setup-linux.sh` | Stub del port a Linux. |
 | `scripts/falsos-positivos.sh` | Instrumento de medición de la fase 1. |
+| `scripts/aplicar-parches.sh` | Aplica `patches/` sobre el código de Hermes. |
+| `patches/` | Arreglo del bug #74328. **Repasar tras cada `hermes update`.** |
 | `docs/portabilidad.md` | Qué es específico de macOS y los bugs conocidos. |
 
 ## Decisiones que conviene no revertir sin pensarlo

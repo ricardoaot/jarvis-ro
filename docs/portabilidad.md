@@ -77,12 +77,24 @@ abierto. PR #74637 sin mergear.
 Resultado: los turnos lanzados por wake word transcriben y responden, pero
 **salen mudos**. El texto aparece en pantalla y no hay audio.
 
-**Workaround:** entrar una vez a `/voice` manualmente en el proceso. Eso deja
-`_voice_tts = True` y a partir de ahí los turnos por wake word sí hablan.
+**Workaround oficial:** entrar una vez a `/voice` manualmente en cada arranque.
+Basta una vez por proceso, no por disparo: `new_session()` no toca `_voice_tts`,
+solo lo apaga `_disable_voice_mode`.
+
+**Lo que hacemos aquí: parchearlo.** `patches/0001-wake-word-auto-tts.patch`
+replica en `_on_wake_word` la comprobación de `auto_tts` que ya hace
+`_enter_voice_mode`, más el `_tts_lease_async(True)` que calienta el motor para
+que la primera respuesta no llegue tarde. Se aplica con
+`scripts/aplicar-parches.sh`, que es idempotente y lo llama el setup.
+
+⚠️ **`hermes update` sobrescribe el código y se lleva el parche.** Después de
+cada actualización hay que volver a pasar `scripts/aplicar-parches.sh`. Si el
+parche deja de aplicar limpio, probablemente upstream ya lo arregló (PR #74637):
+comprueba el issue antes de rehacerlo.
 
 **Por qué importa:** sin saberlo, esto se diagnostica como un fallo de Piper o
 de la configuración de TTS, y no lo es. Es el primer sitio donde mirar si el
-loop de fase 1 responde pero no suena.
+loop responde pero no suena.
 
 ### 2.3 No hay evento de hook para el wake word
 El sistema de hooks de Hermes es amplio (`on_session_start`, `pre_tool_call`,

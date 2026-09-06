@@ -1,0 +1,18 @@
+diff --git a/hermes_cli/cli_voice_mixin.py b/hermes_cli/cli_voice_mixin.py
+index 8f2b0eb..6b64dd5 100644
+--- a/hermes_cli/cli_voice_mixin.py
++++ b/hermes_cli/cli_voice_mixin.py
+@@ -720,6 +720,13 @@ class CLIVoiceMixin:
+         # Single-utterance capture; VAD auto-stop transcribes and queues for process_loop.
+         with self._voice_lock:
+             self._voice_mode = True
++            # PARCHE JARVIS (upstream #74328): _enter_voice_mode consulta auto_tts y
++            # pone _voice_tts, pero esta ruta no lo hacia, asi que los turnos lanzados
++            # por wake word salian mudos hasta entrar a /voice a mano.
++            if _config_section("voice").get("auto_tts", False):
++                self._voice_tts = True
++        if self._voice_tts:
++            self._tts_lease_async(True)  # calienta el motor TTS: si no, la 1a respuesta tarda
+         self._voice_continuous = False
+         try:
+             self._voice_start_recording()

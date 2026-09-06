@@ -115,6 +115,10 @@ install_voice_deps
 predownload_piper_voice
 predownload_wake_models
 
+# ── 8. Parches sobre el código de Hermes ─────────────────────────────────────
+log "aplicando parches"
+"$REPO_ROOT/scripts/aplicar-parches.sh"
+
 echo
 ok "Setup completo. Arranca con: ./scripts/jarvis.sh"
 echo "  Si .env está vacío, genera la key en https://console.anthropic.com"
