@@ -214,6 +214,22 @@ positivos. Cambia de modelo, no de umbral.
 una voz humana, no la voz humana. Usa `scripts/probar-wake.sh` para ver la
 puntuación real con tu voz antes de decidir.
 
+**Trampa al instrumentar openWakeWord:** `predict()` es *stateful* — mantiene un
+búfer temporal de features. Llamarlo dos veces sobre el mismo frame (por ejemplo
+una vez para mostrar la puntuación y otra dentro de `process()`) le duplica el
+audio y hunde la puntuación a cero:
+
+| mismo audio, mismo modelo | pico |
+|---|---|
+| una predicción por frame | 0.960 |
+| dos predicciones por frame | **0.000** |
+
+Hermes hace lo correcto (`process()` una vez por frame en `_run`). Pero cualquier
+herramienta de diagnóstico que quiera *enseñar* la puntuación y además decidir si
+dispara tiene que llamar a `predict()` una sola vez y replicar a mano la lógica
+de racha. `scripts/probar_wake.py` lo hace así; la primera versión no, y producía
+ceros que parecían un micrófono muerto.
+
 ---
 
 ## 3. Decisiones de diseño para que el port sea barato

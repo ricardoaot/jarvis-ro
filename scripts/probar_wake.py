@@ -41,10 +41,17 @@ try:
             crudo = bloque[:, 0]
             frame = (ww._resample_audio_frame(np, crudo, frame_engine)
                      if cap_rate != ww.SAMPLE_RATE else crudo)
+            # UNA sola llamada a predict() por frame. openWakeWord mantiene un
+            # búfer temporal de features, así que predecir dos veces el mismo
+            # frame (p.ej. una para mostrar la puntuación y otra dentro de
+            # process()) le duplica el audio y hunde la puntuación a 0.000.
+            # Por eso aquí se replica a mano la lógica de racha de process().
             punt = max(eng._model.predict(frame).values())
             frames += 1
             max_punt = max(max_punt, punt)
-            if eng.process(frame):
+            eng._confirm_streak = eng._confirm_streak + 1 if punt >= umbral else 0
+            if eng._confirm_streak >= need:
+                eng._confirm_streak = 0
                 disparos += 1
                 print(f"\r  ✦ ¡DISPARO! (punt={punt:.3f})" + " " * 30)
             nivel = int(abs(frame).max())
