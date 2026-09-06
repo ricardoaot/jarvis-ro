@@ -65,10 +65,40 @@ setup_env() {
   fi
 }
 
+# ── 5. Dependencias de voz (dentro del venv de Hermes, no del sistema) ───────
+install_voice_deps() {
+  local venv="$HERMES_HOME/hermes-agent/venv"
+  export VIRTUAL_ENV="$venv"
+  log "instalando extra [voice] (faster-whisper, sounddevice, numpy)"
+  (cd "$HERMES_HOME/hermes-agent" && "$HERMES_HOME/bin/uv" pip install -e ".[voice]")
+  log "instalando piper-tts (TTS local)"
+  (cd "$HERMES_HOME/hermes-agent" && "$HERMES_HOME/bin/uv" pip install piper-tts)
+}
+
+# ── 6. Pre-descarga de la voz de Piper ───────────────────────────────────────
+# La PRIMERA síntesis con una voz nueva la descarga, y ahí hay una carrera que
+# puede tumbar el proceso entero con:
+#   libc++abi: terminating due to uncaught exception ... recursive_mutex lock failed
+# El fichero sí queda bajado y el segundo intento va bien. Descargarla aquí
+# evita que eso te explote en mitad de una conversación.
+predownload_piper_voice() {
+  local venv="$HERMES_HOME/hermes-agent/venv"
+  local voice; voice=$(grep -A2 '^  piper:' "$REPO_ROOT/config/hermes.config.yaml" \
+                       | grep 'voice:' | sed -E 's/.*"(.*)".*/\1/')
+  local dir="$HERMES_HOME/cache/piper-voices"
+  if [ -f "$dir/$voice.onnx" ]; then ok "voz $voice ya descargada"; return; fi
+  log "pre-descargando voz de Piper: $voice"
+  mkdir -p "$dir"
+  "$venv/bin/python" -m piper.download_voices "$voice" --download-dir "$dir" \
+    || log "descarga fallida; el primer arranque la reintentará"
+}
+
 install_system_deps
 install_hermes
 link_config
 setup_env
+install_voice_deps
+predownload_piper_voice
 
 echo
 ok "Setup completo. Arranca con: ./scripts/jarvis.sh"

@@ -23,9 +23,9 @@ que se está validando es si la wake word aguanta ruido de fondo real.
 | Instalación de Hermes (v0.21.0) | ✅ hecho |
 | Config versionada + secretos externalizados | ✅ hecho |
 | Responde por texto | ✅ hecho — `anthropic/claude-haiku-4.5` |
-| STT (Whisper local) | 🟡 pipeline validado, falta prueba con micro en vivo |
-| TTS (Piper local) | ⏳ siguiente |
-| Wake word + medición de falsos positivos | ⬜ no empezado |
+| STT (Whisper local) | ✅ hecho — bilingüe ES/EN por autodetección |
+| TTS (Piper local) | ✅ hecho — voz `es_ES-davefx-medium`, 0.66s |
+| Wake word + medición de falsos positivos | ⏳ siguiente |
 
 **Criterio de aceptación de la fase 1:** un día completo de uso normal (música,
 videollamadas, conversación, TV de fondo) con **menos de 3 falsos positivos**.
@@ -71,5 +71,8 @@ En Linux: `scripts/setup-linux.sh` es un **stub sin probar**. Léelo junto a
   repo es el único, y se inyecta por entorno.
 - **TTS local (Piper).** Sin TTS de red. El default de Hermes es `edge`, que sí
   es de red, así que hay que sobrescribirlo explícitamente.
+- **El habla es solo en español.** Le puedes hablar en inglés o español y te
+  entiende y te contesta en tu idioma, pero la voz siempre será española:
+  Hermes no sabe cambiar de voz según el idioma. Ver docs/portabilidad.md §2.5.
 - **Nada se instala a nivel de sistema sin que esté en `setup-macos.sh`**, a la
   vista y en una función aparte.

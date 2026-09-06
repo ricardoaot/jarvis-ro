@@ -23,16 +23,38 @@ model:
 stt:
   enabled: true
   provider: "local"
-  # OJO: el default del código es "en". Sin esta línea, el español se
-  # transcribiría forzado a inglés. Cambia a "" para autodetectar.
-  language: "es"
+  # "" = autodetecta idioma (bilingüe ES/EN). El default del código es "en",
+  # así que esta línea es obligatoria: sin ella el español iría forzado a inglés.
+  language: ""
   local:
     model: "base"          # tiny | base | small | medium | large-v3 | turbo
     # vad: true por defecto (Silero) — filtra silencio y evita que whisper
     # alucine texto a partir de ruido. Importante para la fase 4.
 
-# ── TTS / wake word ──────────────────────────────────────────────────────────
-# Se añaden al validar cada fase, no antes.
+# ── TTS: Piper local ─────────────────────────────────────────────────────────
+# IMPRESCINDIBLE fijar provider. El default del código es "edge", que es TTS
+# de RED (Microsoft). Piper sintetiza en la máquina, sin red y sin API key.
 #
-# AVISO para la fase 3: el default de tts.provider es "edge", que es TTS de RED.
-# Hay que sobrescribirlo explícitamente a "piper" (local).
+# La voz se descarga sola la primera vez a ~/.hermes/cache/piper-voices/.
+# Catálogo: https://github.com/OHF-Voice/piper1-gpl/blob/main/docs/VOICES.md
+#
+# LIMITACIÓN CONOCIDA — no hay TTS bilingüe:
+#   tools/tts_tool_local.py resuelve la voz como
+#     voice_name = piper_config.get("voice") or DEFAULT_PIPER_VOICE
+#   Es una voz estática: Hermes no detecta el idioma de la respuesta ni cambia
+#   de voz. Una voz de Piper habla un solo idioma. El STT sí es bilingüe
+#   (stt.language: ""), y el modelo contesta en el idioma en que le hables,
+#   pero ese texto se locutará SIEMPRE con fonética española.
+tts:
+  provider: "piper"
+  piper:
+    voice: "es_ES-davefx-medium"
+
+# Hablar las respuestas automáticamente al entrar en modo voz.
+# OJO: por el bug hermes-agent#74328 esto NO se aplica a los turnos lanzados
+# por wake word. Ver docs/portabilidad.md §2.2.
+voice:
+  auto_tts: true
+
+# ── Wake word ────────────────────────────────────────────────────────────────
+# Se añade al validar la fase 4, no antes.

@@ -93,6 +93,46 @@ origen de la sesión: no distingue una sesión abierta por voz de una tecleada.
 Por eso la medición de falsos positivos se hace leyendo `agent.log`, que sí
 tiene una línea fiable a nivel INFO. Ver `scripts/falsos-positivos.sh`.
 
+### 2.4 La primera descarga de una voz de Piper puede tumbar el proceso
+Al sintetizar por primera vez con una voz no cacheada, Piper la descarga y a
+veces revienta con un fallo nativo:
+
+```
+libc++abi: terminating due to uncaught exception of type std::__1::system_error:
+recursive_mutex lock failed: Invalid argument
+```
+
+Observado con `es_AR-daniela-high`. Es una carrera entre la descarga y la carga
+del modelo: **el .onnx sí queda bien escrito en disco**, y el segundo intento
+funciona sin problema (1.20s). No es corrupción, es un crash de arranque.
+
+**Mitigación:** `scripts/setup-macos.sh` pre-descarga la voz configurada con
+`python -m piper.download_voices` antes del primer uso, para que esto no ocurra
+en mitad de una conversación. Si cambias `tts.piper.voice`, vuelve a pasar el
+setup o descarga la voz a mano.
+
+### 2.5 No hay TTS bilingüe
+`tools/tts_tool_local.py` resuelve la voz así:
+
+```python
+voice_name = piper_config.get("voice") or DEFAULT_PIPER_VOICE
+```
+
+Una voz estática de la config. **Hermes no detecta el idioma de la respuesta ni
+enruta a otra voz**, y cada modelo de Piper habla un solo idioma.
+
+Lo que sí es bilingüe:
+- **STT**: con `stt.language: ""` Whisper autodetecta ES/EN.
+- **El modelo**: contesta en el idioma en que le hables, sin configurar nada.
+
+Lo que no: el habla. Una respuesta en inglés se locuta con fonética española.
+Sale inteligible pero suena mal.
+
+Si algún día hace falta de verdad, la vía sería un hook que detecte el idioma
+de la respuesta y reescriba `tts.piper.voice` antes de sintetizar — pero eso es
+código propio sobre un punto de extensión que Hermes no ofrece hoy, y queda muy
+fuera del alcance de la fase 1.
+
 ---
 
 ## 3. Decisiones de diseño para que el port sea barato
