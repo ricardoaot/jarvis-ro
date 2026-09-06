@@ -230,6 +230,54 @@ dispara tiene que llamar a `predict()` una sola vez y replicar a mano la lógica
 de racha. `scripts/probar_wake.py` lo hace así; la primera versión no, y producía
 ceros que parecían un micrófono muerto.
 
+### 2.8 PortAudio corrompe la interfaz y Hermes parece colgado
+Tras un turno de voz, al reabrir el micrófono, macOS suele soltar:
+
+```
+||PaMacCore (AUHAL)|| Error on line 2523: err='-50', msg=Unknown Error
+```
+
+Lo escribe la librería **C** de PortAudio directamente a stderr, saltándose el
+logging de Python — por eso **no aparece en `agent.log`**. Cae encima del
+dibujado de prompt_toolkit y se incrusta en la línea de entrada:
+
+```
+🎤 ❯ ||PaMacCore (AUHAL)|| Error on line 2523: err='-50'
+```
+
+A partir de ahí la interfaz deja de repintarse bien y **parece colgada**.
+
+**No lo está.** Verificado sobre una instancia que el usuario daba por muerta:
+reproduciendo la frase por los altavoces, el detector siguió disparando
+(`phrase detected`) y arrancando grabación con normalidad. El backend funciona;
+lo único roto es el dibujado.
+
+**Mitigación:** `scripts/jarvis.sh` desvía stderr a `logs/stderr.log`. No se
+pierde nada, porque el logging real de Hermes va a `~/.hermes/logs/`.
+
+**Cómo distinguir "colgado" de "parece colgado"** — mira siempre el log, nunca
+la pantalla:
+
+```bash
+tail -3 ~/.hermes/logs/agent.log     # ¿sigue escribiendo?
+grep -c "phrase detected" ~/.hermes/logs/agent.log
+```
+
+### 2.9 El nivel de voz importa más de lo que parece
+El detector no dispara si hablas lejos o bajo, y el síntoma es idéntico al de
+un sistema roto: silencio absoluto, sin errores en ninguna parte.
+
+Niveles medidos con `scripts/probar-wake.sh`:
+
+| situación | nivel de pico | resultado |
+|---|---|---|
+| hablando lejos / bajo | 150-200 | **no dispara** |
+| hablando cerca del portátil | ~3000 | dispara, pico 0.970 |
+
+Un factor de quince. Antes de tocar `sensitivity` o cambiar de modelo,
+comprueba el nivel: si ronda los cientos en vez de los miles, el problema es la
+distancia al micrófono, no la configuración.
+
 ---
 
 ## 3. Decisiones de diseño para que el port sea barato

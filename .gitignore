@@ -8,3 +8,4 @@ data/
 
 # Ruido del sistema
 .DS_Store
+logs/

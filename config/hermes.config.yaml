@@ -15,7 +15,9 @@
 # suscripción, y Hermes factura ese uso como "extra usage" aparte de la cuota.
 model:
   provider: "anthropic"
-  default: "anthropic/claude-haiku-4.5"
+  # Forma canónica: Hermes normaliza "claude-haiku-4.5" a "claude-haiku-4-5" y
+  # avisa por pantalla cada arranque. Lo escribimos ya normalizado.
+  default: "anthropic/claude-haiku-4-5"
 
 # ── STT: Whisper local ───────────────────────────────────────────────────────
 # provider "local" = faster-whisper en la máquina. Sin API key, sin red.

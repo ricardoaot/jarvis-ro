@@ -22,4 +22,16 @@ if [ -z "${ANTHROPIC_API_KEY:-}" ]; then
   exit 1
 fi
 
-exec "$HOME/.local/bin/hermes" "$@"
+# Las librerías de audio en C (PortAudio/CoreAudio) escriben avisos DIRECTAMENTE
+# a stderr, saltándose el logging de Python. En macOS es habitual ver
+#   ||PaMacCore (AUHAL)|| Error on line 2523: err='-50'
+# al reabrir el micrófono tras un turno de voz. Es inofensivo para el detector
+# —sigue oyendo y disparando— pero cae encima del dibujado de prompt_toolkit y
+# deja la interfaz corrompida: parece colgada cuando no lo está.
+#
+# Desviamos stderr a un fichero para que el terminal quede limpio. No perdemos
+# nada: el logging real de Hermes va a ~/.hermes/logs/.
+mkdir -p "$REPO_ROOT/logs"
+STDERR_LOG="$REPO_ROOT/logs/stderr.log"
+echo "--- $(date '+%Y-%m-%d %H:%M:%S') arranque ---" >> "$STDERR_LOG"
+exec "$HOME/.local/bin/hermes" "$@" 2>> "$STDERR_LOG"

@@ -25,7 +25,7 @@ que se está validando es si la wake word aguanta ruido de fondo real.
 | Responde por texto | ✅ hecho — `anthropic/claude-haiku-4.5` |
 | STT (Whisper local) | ✅ hecho — bilingüe ES/EN por autodetección |
 | TTS (Piper local) | ✅ hecho — voz `es_ES-davefx-medium`, 0.66s |
-| Wake word (`hey hermes`) | ✅ montado y verificado con voz |
+| Wake word (`hey hermes`) | ✅ funcionando end-to-end con voz real |
 | Medición de falsos positivos | ⏳ **te toca a ti**: un día de uso normal |
 
 **Criterio de aceptación de la fase 1:** un día completo de uso normal (música,
@@ -64,6 +64,18 @@ iniciarse, así que **no hay que escribir `/wake on` ni `/voice`**. Lanzas
 /wake status     # ver estado del detector
 /wake off        # apagarlo un rato
 ```
+
+### Si parece que no responde
+
+Mira el log, no la pantalla. PortAudio corrompe el dibujado de la interfaz y
+Hermes **parece colgado cuando no lo está** (ver docs/portabilidad.md §2.8):
+
+```bash
+tail -3 ~/.hermes/logs/agent.log
+```
+
+Y antes de tocar nada: **acércate al micrófono**. Hablando lejos el nivel se
+queda en 150-200 y no dispara; cerca sube a ~3000 y dispara con pico 0.970.
 
 ### Si no dispara
 
