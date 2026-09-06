@@ -57,4 +57,25 @@ voice:
   auto_tts: true
 
 # ── Wake word ────────────────────────────────────────────────────────────────
-# Se añade al validar la fase 4, no antes.
+# Detección 100% on-device: no sale audio de la máquina hasta que hablas.
+#
+# Motor: openWakeWord con el modelo entrenado "hey_jarvis" (built-in). Se
+# prefiere a sherpa por dos razones: sherpa es vocabulario abierto y SOLO
+# inglés (ver _sherpa_model_root en tools/wake_word_engines.py), y openWakeWord
+# es el único motor con confirmation_frames, que es la palanca buena contra
+# falsos positivos.
+#
+# En Apple Silicon el framework se resuelve solo a tflite. NO pongas "onnx"
+# aquí: es un camino muerto en esta plataforma (openWakeWord#336). Hermes lo
+# coacciona a tflite igualmente, pero mejor no pedirlo. Ver portabilidad §2.1.
+wake_word:
+  enabled: true
+  provider: openwakeword
+  phrase: "hey jarvis"        # etiqueta; la detección la fija el modelo
+  start_new_session: true
+  # ── Palancas contra falsos positivos (criterio de aceptación: <3 al día) ──
+  sensitivity: 0.6            # 0.0-1.0. MÁS ALTO = MÁS ESTRICTO. Sube a 0.8.
+  confirmation_frames: 3      # frames consecutivos sobre umbral. Sube a 4-5.
+  openwakeword:
+    model: hey_jarvis
+    inference_framework: ""   # "" = auto -> tflite en macOS ARM64

@@ -73,6 +73,20 @@ install_voice_deps() {
   (cd "$HERMES_HOME/hermes-agent" && "$HERMES_HOME/bin/uv" pip install -e ".[voice]")
   log "instalando piper-tts (TTS local)"
   (cd "$HERMES_HOME/hermes-agent" && "$HERMES_HOME/bin/uv" pip install piper-tts)
+  log "instalando extra [wake] (openwakeword, sherpa, porcupine)"
+  # En macOS este extra arrastra ai-edge-litert, que es lo que hace funcionar
+  # el backend tflite. Sin él el wake word se arma pero nunca dispara.
+  (cd "$HERMES_HOME/hermes-agent" && "$HERMES_HOME/bin/uv" pip install -e ".[wake]")
+}
+
+# ── 7. Modelos de wake word ──────────────────────────────────────────────────
+# openWakeWord baja bajo demanda el modelo de la frase MÁS los modelos
+# compartidos (melspectrogram + embedding), sin los que no funciona ninguno.
+predownload_wake_models() {
+  log "pre-descargando modelos de openWakeWord"
+  "$HERMES_HOME/hermes-agent/venv/bin/python" -c \
+    "import openwakeword.utils as u; u.download_models()" \
+    || log "descarga fallida; el primer /wake on la reintentará"
 }
 
 # ── 6. Pre-descarga de la voz de Piper ───────────────────────────────────────
@@ -99,6 +113,7 @@ link_config
 setup_env
 install_voice_deps
 predownload_piper_voice
+predownload_wake_models
 
 echo
 ok "Setup completo. Arranca con: ./scripts/jarvis.sh"

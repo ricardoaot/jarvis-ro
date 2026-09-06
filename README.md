@@ -25,7 +25,8 @@ que se está validando es si la wake word aguanta ruido de fondo real.
 | Responde por texto | ✅ hecho — `anthropic/claude-haiku-4.5` |
 | STT (Whisper local) | ✅ hecho — bilingüe ES/EN por autodetección |
 | TTS (Piper local) | ✅ hecho — voz `es_ES-davefx-medium`, 0.66s |
-| Wake word + medición de falsos positivos | ⏳ siguiente |
+| Wake word (`hey jarvis`) | ✅ montado — falta la medición de un día |
+| Medición de falsos positivos | ⏳ **te toca a ti**: un día de uso normal |
 
 **Criterio de aceptación de la fase 1:** un día completo de uso normal (música,
 videollamadas, conversación, TV de fondo) con **menos de 3 falsos positivos**.
@@ -47,6 +48,44 @@ always-on.
 
 En Linux: `scripts/setup-linux.sh` es un **stub sin probar**. Léelo junto a
 [docs/portabilidad.md](docs/portabilidad.md) antes de intentar el port.
+
+## Medir los falsos positivos (el objetivo de la fase 1)
+
+Esto es lo único que queda por validar, y no lo puede hacer la máquina sola:
+hace falta un día de uso normal con música, videollamadas, conversación y tele
+de fondo.
+
+```bash
+./scripts/jarvis.sh              # deja Hermes corriendo el día entero
+```
+
+Al final del día:
+
+```bash
+./scripts/falsos-positivos.sh              # lista los disparos con su hora
+./scripts/falsos-positivos.sh --falso 2 5  # marca los que NO provocaste tú
+```
+
+El script lee la línea INFO que `tools/wake_word.py` escribe en `agent.log` al
+disparar, así que **registra los disparos aunque no lo tengas abierto**. Si
+prefieres verlos en vivo con un pitido, `--seguir`.
+
+El script cuenta disparos; cuáles fueron falsos lo decides tú, porque saber si
+dijiste "hey jarvis" a propósito no está en ningún log. Cuando no quede ninguno
+sin revisar, te da el veredicto contra el criterio de aceptación.
+
+### ⚠️ Antes de empezar el día de medición
+
+Por el bug [hermes-agent#74328](https://github.com/NousResearch/hermes-agent/issues/74328),
+los turnos lanzados por wake word **salen mudos**. Nada más arrancar, escribe
+una vez:
+
+```
+/voice
+```
+
+Eso deja el TTS activo para el resto de la sesión. Sin ese paso Jarvis te
+entiende y te responde, pero por escrito. Ver docs/portabilidad.md §2.2.
 
 ## Cómo está organizado
 

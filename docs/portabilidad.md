@@ -133,6 +133,35 @@ de la respuesta y reescriba `tts.piper.voice` antes de sintetizar — pero eso e
 código propio sobre un punto de extensión que Hermes no ofrece hoy, y queda muy
 fuera del alcance de la fase 1.
 
+### 2.6 Al probar el wake word con ficheros, deja silencio al final
+No es un bug, es una trampa de la metodología, y cuesta una tarde si no la ves.
+
+openWakeWord puntúa frames de 80 ms y exige `confirmation_frames` frames
+**consecutivos** por encima del umbral. Un .wav que acaba justo al terminar la
+frase se queda sin frames mientras la puntuación todavía está subiendo:
+
+```
+"hey jarvis" (0.81s, sin cola):  0.00 ... 0.01 0.15 0.82   -> racha 1, NO dispara
+"hey jarvis" + 1.5s de silencio: 0.00 ... 0.12 0.93 1.00 1.00 ...  -> racha 8, dispara
+```
+
+El mismo audio, el mismo umbral, veredicto opuesto. En uso real el stream del
+micro sigue corriendo, así que esto solo afecta a las pruebas offline: **añade
+al menos 1 segundo de cola** (`ffmpeg -af apad=pad_dur=1.5`) o concluirás que
+el detector está roto cuando no lo está.
+
+Separación medida con la config actual (umbral 0.6):
+
+| audio | pico |
+|---|---|
+| "hey jarvis, turn on the lights" | 1.00 |
+| "hey there, what is the weather" | 0.011 |
+| "the car is very fast" | 0.000 |
+
+Casi dos órdenes de magnitud entre positivo y negativo. Buena señal de partida
+para el criterio de aceptación, pero **no sustituye a medir con ruido real**:
+esto es voz sintética en una habitación en silencio.
+
 ---
 
 ## 3. Decisiones de diseño para que el port sea barato
