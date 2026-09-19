@@ -66,6 +66,13 @@ tts:
 # por wake word. Ver docs/portabilidad.md §2.2.
 voice:
   auto_tts: true
+  # VAD: el ambiente normal del Mac ronda 80-200 RMS. Con el default 200,
+  # ventilación/TV puede mantener la captura abierta indefinidamente.
+  silence_threshold: 350
+  silence_duration: 2.0
+  # Red de seguridad: aunque el VAD no encuentre silencio, la pregunta se
+  # entrega a STT/Claude al llegar a este límite.
+  max_recording_seconds: 15
   # Después de cada respuesta, abre una sola captura durante este tiempo. Si
   # hablas, procesa otro turno sin wake word y reinicia la ventana; si expira,
   # vuelve a "hey hermes". Cero desactiva el seguimiento.

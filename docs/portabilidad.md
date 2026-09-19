@@ -452,6 +452,21 @@ conservadora para wake word:
 Prueba acústica real con los altavoces del Mac: un “Hey Hermes”, dos preguntas
 consecutivas y retorno a `wake word: listening` tras 10 segundos de silencio.
 
+### 2.15 El VAD puede no cerrar la grabación con ruido sostenido
+**Síntoma:** la wake word dispara, aparece `Recording...`, el log registra
+`Speech confirmed`, pero nunca aparece `Silence detected` ni se envía nada a
+Claude. El primer `Ctrl+C` cancela esa grabación y el segundo cierra Hermes.
+
+**Causa:** el umbral RMS predeterminado (200) es demasiado cercano al ruido
+ambiente real del micrófono integrado. Ventilación, TV o conversación de fondo
+pueden reiniciar continuamente el contador de silencio.
+
+**Mitigación versionada:** `voice.silence_threshold: 350`, dos segundos de
+silencio y `voice.max_recording_seconds: 15`. El límite es una red de seguridad:
+aunque el VAD falle, Hermes cierra el WAV y lo entrega a STT/Claude. En Linux se
+debe recalibrar el umbral porque ALSA/PipeWire y otro micrófono producirán
+niveles RMS distintos.
+
 ---
 
 ## 3. Decisiones de diseño para que el port sea barato

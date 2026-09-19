@@ -27,6 +27,7 @@ que se está validando es si la wake word aguanta ruido de fondo real.
 | TTS (Piper local) | ✅ hecho — voces ES/EN dinámicas, ~0.7-0.8s en caliente |
 | Wake word (`hey hermes`) | ✅ funcionando end-to-end con voz real |
 | Seguimiento sin wake word | ✅ ventana de 10 s después de cada respuesta |
+| Corte de grabación | ✅ VAD + límite de seguridad de 15 s |
 | Medición de falsos positivos | ⏳ **te toca a ti**: un día de uso normal |
 
 **Criterio de aceptación de la fase 1:** un día completo de uso normal (música,
