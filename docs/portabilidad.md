@@ -123,27 +123,27 @@ funciona sin problema (1.20s). No es corrupción, es un crash de arranque.
 en mitad de una conversación. Si cambias `tts.piper.voice`, vuelve a pasar el
 setup o descarga la voz a mano.
 
-### 2.5 No hay TTS bilingüe
-`tools/tts_tool_local.py` resuelve la voz así:
+### 2.5 Selección bilingüe de voz Piper
+Hermes resuelve una sola `tts.piper.voice` estática y no propaga el idioma de
+la respuesta al TTS. Cada modelo Piper habla un solo idioma, por lo que usar la
+voz española para texto inglés produce una pronunciación incorrecta.
 
-```python
-voice_name = piper_config.get("voice") or DEFAULT_PIPER_VOICE
-```
+`patches/0002-follow-up-bilingual-tts.patch` añade una selección determinista
+por el propio texto final y la config declara dos modelos locales:
 
-Una voz estática de la config. **Hermes no detecta el idioma de la respuesta ni
-enruta a otra voz**, y cada modelo de Piper habla un solo idioma.
+- español: `es_ES-davefx-medium`;
+- inglés: `en_US-lessac-medium`.
 
-Lo que sí es bilingüe:
-- **STT**: con `stt.language: ""` Whisper autodetecta ES/EN.
-- **El modelo**: contesta en el idioma en que le hables, sin configurar nada.
+No se añadió un modelo de detección de idioma: para dos idiomas y respuestas
+cortas basta un conteo de palabras funcionales y caracteres españoles. En caso
+de empate conserva la voz española predeterminada. Ambas voces quedan en la
+caché de Piper y no usan red después de su primera descarga.
 
-Lo que no: el habla. Una respuesta en inglés se locuta con fonética española.
-Sale inteligible pero suena mal.
-
-Si algún día hace falta de verdad, la vía sería un hook que detecte el idioma
-de la respuesta y reescriba `tts.piper.voice` antes de sintetizar — pero eso es
-código propio sobre un punto de extensión que Hermes no ofrece hoy, y queda muy
-fuera del alcance de la fase 1.
+Medición en Apple Silicon, con modelos calientes: 0.79 s para una frase española
+y 0.69 s para una inglesa. Por eso no se sustituyó Piper por un motor más pesado.
+La limitación restante es STT: Whisper está fijado en español por §2.13, así que
+el bilingüismo funciona para texto/respuestas, pero aún no para preguntas
+habladas en inglés.
 
 ### 2.6 Al probar el wake word con ficheros, deja silencio al final
 No es un bug, es una trampa de la metodología, y cuesta una tarde si no la ves.
@@ -435,6 +435,22 @@ siendo mala— y añade latencia.
 Si algún día hace falta bilingüe de verdad, la vía no es la autodetección de
 Whisper sino un clasificador de idioma aparte, o dos wake words distintas que
 fijen el idioma cada una.
+
+### 2.14 Ventana de seguimiento sin repetir la wake word
+El modo continuo nativo de Hermes abre escucha full-duplex durante generación y
+TTS. En macOS eso vuelve a introducir streams Core Audio simultáneos y permite
+que el asistente se oiga a sí mismo. El parche 0002 implementa una variante más
+conservadora para wake word:
+
+1. el detector se pausa y captura una pregunta;
+2. permanece bloqueado durante STT, modelo y TTS;
+3. al acabar la respuesta abre una única captura por `voice.follow_up_timeout`
+   (10 segundos en esta config);
+4. una pregunta reinicia el ciclo sin wake word;
+5. si vence el plazo sin voz, cierra el grabador y reactiva el detector.
+
+Prueba acústica real con los altavoces del Mac: un “Hey Hermes”, dos preguntas
+consecutivas y retorno a `wake word: listening` tras 10 segundos de silencio.
 
 ---
 

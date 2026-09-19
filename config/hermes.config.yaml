@@ -33,8 +33,8 @@ stt:
   #
   # El default del código es "en", así que esta línea es obligatoria igualmente.
   #
-  # Coste: el STT ya no entiende inglés. Se asume: la voz de TTS es española, y
-  # una respuesta en inglés se locutaría con fonética española de todos modos.
+  # Coste: por voz, el STT todavía no entiende inglés de forma fiable. El TTS sí
+  # puede leer texto inglés con su voz inglesa independiente.
   language: "es"
   local:
     model: "base"          # tiny | base | small | medium | large-v3 | turbo
@@ -48,23 +48,30 @@ stt:
 # La voz se descarga sola la primera vez a ~/.hermes/cache/piper-voices/.
 # Catálogo: https://github.com/OHF-Voice/piper1-gpl/blob/main/docs/VOICES.md
 #
-# LIMITACIÓN CONOCIDA — no hay TTS bilingüe:
-#   tools/tts_tool_local.py resuelve la voz como
-#     voice_name = piper_config.get("voice") or DEFAULT_PIPER_VOICE
-#   Es una voz estática: Hermes no detecta el idioma de la respuesta ni cambia
-#   de voz. Una voz de Piper habla un solo idioma. El STT sí es bilingüe
-#   (stt.language: ""), y el modelo contesta en el idioma en que le hables,
-#   pero ese texto se locutará SIEMPRE con fonética española.
+# Bilingüe local: Hermes no trae selección de voz por idioma. El parche 0002
+# detecta si el texto final es español o inglés y elige el modelo Piper
+# correspondiente. No usa red ni añade dependencias.
 tts:
   provider: "piper"
   piper:
     voice: "es_ES-davefx-medium"
+    # El parche bilingüe elige una de estas voces a partir del texto final.
+    # Ambas son locales y quedan cacheadas después de la primera descarga.
+    voices:
+      es: "es_ES-davefx-medium"
+      en: "en_US-lessac-medium"
 
 # Hablar las respuestas automáticamente al entrar en modo voz.
 # OJO: por el bug hermes-agent#74328 esto NO se aplica a los turnos lanzados
 # por wake word. Ver docs/portabilidad.md §2.2.
 voice:
   auto_tts: true
+  # Después de cada respuesta, abre una sola captura durante este tiempo. Si
+  # hablas, procesa otro turno sin wake word y reinicia la ventana; si expira,
+  # vuelve a "hey hermes". Cero desactiva el seguimiento.
+  follow_up_timeout: 10
+  # El seguimiento se arma después de TTS; no se escucha mientras Hermes habla.
+  barge_in: false
 
 # ── Wake word ────────────────────────────────────────────────────────────────
 # Detección 100% on-device: no sale audio de la máquina hasta que hablas.

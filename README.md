@@ -24,8 +24,9 @@ que se está validando es si la wake word aguanta ruido de fondo real.
 | Config versionada + secretos externalizados | ✅ hecho |
 | Responde por texto | ✅ hecho — `anthropic/claude-haiku-4.5` |
 | STT (Whisper local) | ✅ hecho — español fijo (la autodetección falla, §2.13) |
-| TTS (Piper local) | ✅ hecho — voz `es_ES-davefx-medium`, 0.66s |
+| TTS (Piper local) | ✅ hecho — voces ES/EN dinámicas, ~0.7-0.8s en caliente |
 | Wake word (`hey hermes`) | ✅ funcionando end-to-end con voz real |
+| Seguimiento sin wake word | ✅ ventana de 10 s después de cada respuesta |
 | Medición de falsos positivos | ⏳ **te toca a ti**: un día de uso normal |
 
 **Criterio de aceptación de la fase 1:** un día completo de uso normal (música,
@@ -181,9 +182,8 @@ sin revisar, te da el veredicto contra el criterio de aceptación.
   repo es el único, y se inyecta por entorno.
 - **TTS local (Piper).** Sin TTS de red. El default de Hermes es `edge`, que sí
   es de red, así que hay que sobrescribirlo explícitamente.
-- **Todo el loop de voz es en español.** Se intentó bilingüe y no salió: Hermes
-  no sabe cambiar de voz de TTS según el idioma (§2.5), y la autodetección de
-  idioma de Whisper falla demasiado en frases cortas (§2.13). Por texto sí
-  responde en el idioma en que le escribas.
+- **El STT de voz está fijado en español.** La autodetección de Whisper falla
+  demasiado en frases cortas (§2.13). El TTS sí selecciona una voz local
+  española o inglesa según el texto de la respuesta (§2.5).
 - **Nada se instala a nivel de sistema sin que esté en `setup-macos.sh`**, a la
   vista y en una función aparte.

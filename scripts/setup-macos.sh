@@ -104,14 +104,18 @@ predownload_wake_models() {
 # evita que eso te explote en mitad de una conversación.
 predownload_piper_voice() {
   local venv="$HERMES_HOME/hermes-agent/venv"
-  local voice; voice=$(grep -A2 '^  piper:' "$REPO_ROOT/config/hermes.config.yaml" \
-                       | grep 'voice:' | sed -E 's/.*"(.*)".*/\1/')
+  local voices=("es_ES-davefx-medium" "en_US-lessac-medium")
   local dir="$HERMES_HOME/cache/piper-voices"
-  if [ -f "$dir/$voice.onnx" ]; then ok "voz $voice ya descargada"; return; fi
-  log "pre-descargando voz de Piper: $voice"
   mkdir -p "$dir"
-  "$venv/bin/python" -m piper.download_voices "$voice" --download-dir "$dir" \
-    || log "descarga fallida; el primer arranque la reintentará"
+  for voice in "${voices[@]}"; do
+    if [ -f "$dir/$voice.onnx" ]; then
+      ok "voz $voice ya descargada"
+      continue
+    fi
+    log "pre-descargando voz de Piper: $voice"
+    "$venv/bin/python" -m piper.download_voices "$voice" --download-dir "$dir" \
+      || log "descarga fallida; el primer arranque la reintentará"
+  done
 }
 
 install_system_deps

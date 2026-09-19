@@ -11,6 +11,6 @@ idioma y el resto de estas instrucciones está en inglés, lo que arrastra las
 respuestas al inglés aunque la pregunta fuera en español. El idioma de la
 pregunta manda.
 
-Nota: la voz de TTS configurada es española (ver tts.piper.voice). Una respuesta
-en inglés se locutará con fonética española y sonará mal, pero aun así debes
-responder en el idioma en que te hablaron.
+El TTS local selecciona automáticamente una voz Piper española o inglesa según
+el texto de tu respuesta. Mantén toda la respuesta en el idioma de la pregunta;
+no mezcles idiomas salvo que el usuario lo pida.

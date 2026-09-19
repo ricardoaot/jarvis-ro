@@ -1,0 +1,141 @@
+diff --git a/cli.py b/cli.py
+index 9fe19f1..9819093 100644
+--- a/cli.py
++++ b/cli.py
+@@ -3596,6 +3596,25 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin, CLIBillingMixin, CLITuiMix
+                 logging.debug("%s hook failed: %s", what, _exc)
+ 
+         # Continuous voice: restart recording off-thread (beep + recorder start would block process_loop).
++        if getattr(self, "_wake_follow_up_pending", False) and not self._voice_recording:
++            self._wake_follow_up_pending = False
++
++            def _start_wake_follow_up():
++                try:
++                    if self._voice_tts:
++                        self._voice_tts_done.wait(timeout=60)
++                        time.sleep(0.3)
++                    self._voice_continuous = True
++                    self._voice_start_recording()
++                    self._app.invalidate()
++                except Exception as e:
++                    self._voice_continuous = False
++                    self._wake_follow_up_session = False
++                    self._wake_arming = False
++                    _cprint(f"{_DIM}Voice follow-up failed: {e}{_RST}")
++
++            threading.Thread(target=_start_wake_follow_up, daemon=True).start()
++
+         if self._voice_mode and self._voice_continuous and not self._voice_recording:
+             def _restart_recording():
+                 try:
+diff --git a/hermes_cli/cli_voice_mixin.py b/hermes_cli/cli_voice_mixin.py
+index bef76fd..c2ee291 100644
+--- a/hermes_cli/cli_voice_mixin.py
++++ b/hermes_cli/cli_voice_mixin.py
+@@ -116,6 +116,8 @@ class CLIVoiceMixin:
+         # voice.max_recording_seconds — hard cap on one recording; explicit <= 0 disables it.
+         _max_rec = _numeric_or(voice_cfg.get("max_recording_seconds"), None)
+         rec._max_recording_seconds = (_max_rec if _max_rec > 0 else 0.0) if _max_rec is not None else 120.0
++        if getattr(self, "_wake_follow_up_session", False) and self._voice_continuous:
++            rec._max_wait = max(1.0, _numeric_or(voice_cfg.get("follow_up_timeout"), 10.0))
+ 
+         def _on_silence():
+             """Called by AudioRecorder when silence is detected after speech."""
+@@ -215,7 +217,9 @@ class CLIVoiceMixin:
+             # watchdog opens the detector again; keeping the stopped recorder alive
+             # alongside the new wake stream makes CoreAudio invalidate one callback
+             # (PaMacCore/AUHAL err=-50) after the first turn.
+-            if getattr(self, "_wake_word_active", False) and not self._voice_continuous:
++            if (getattr(self, "_wake_word_active", False)
++                    and (not self._voice_continuous
++                         or getattr(self, "_wake_follow_up_session", False))):
+                 _rec = self._voice_recorder
+                 self._voice_recorder = None
+                 try:
+@@ -241,6 +245,13 @@ class CLIVoiceMixin:
+                 self._voice_invalidate()
+                 self._pending_input.put(_VoiceInputMessage(transcript))
+                 submitted = True
++                if getattr(self, "_wake_follow_up_session", False):
++                    # Do not use Hermes' full-duplex continuous mode for wake follow-ups:
++                    # on macOS it would open a second CoreAudio input while TTS is active.
++                    # Re-arm one clean, timed capture only after this answer has finished.
++                    self._voice_continuous = False
++                    self._wake_follow_up_pending = True
++                    self._wake_arming = True
+             elif result.get("success"):
+                 _cprint(f"{_DIM}No speech detected.{_RST}")
+             else:
+@@ -276,8 +287,15 @@ class CLIVoiceMixin:
+                 self._no_speech_count = 0
+             elif not _activity_hold:
+                 self._no_speech_count = getattr(self, '_no_speech_count', 0) + 1
+-                if self._no_speech_count >= 3:
++                _no_speech_limit = 1 if getattr(self, "_wake_follow_up_session", False) else 3
++                if self._no_speech_count >= _no_speech_limit:
+                     self._voice_continuous = False
+                     self._no_speech_count = 0
+-                    _cprint(f"{_DIM}No speech detected 3 times, continuous mode stopped.{_RST}")
++                    if getattr(self, "_wake_follow_up_session", False):
++                        self._wake_follow_up_session = False
++                        self._wake_follow_up_pending = False
++                        self._wake_arming = False
++                        _cprint(f"{_DIM}Follow-up window expired — wake word listening resumed.{_RST}")
++                    else:
++                        _cprint(f"{_DIM}No speech detected 3 times, continuous mode stopped.{_RST}")
+                     stop_continuous_restart = True
+@@ -748,4 +766,7 @@ class CLIVoiceMixin:
+         if self._voice_tts:
+             self._tts_lease_async(True)  # calienta el motor TTS: si no, la 1a respuesta tarda
+         self._voice_continuous = False
++        _follow_up_timeout = _numeric_or(_config_section("voice").get("follow_up_timeout"), 0)
++        self._wake_follow_up_session = bool(_follow_up_timeout and _follow_up_timeout > 0)
++        self._wake_follow_up_pending = False
+         # PARCHE JARVIS: en macOS, abrir y cerrar el InputStream del wake word MATA
+diff --git a/tools/tts_tool_local.py b/tools/tts_tool_local.py
+index 96a08d2..56337be 100644
+--- a/tools/tts_tool_local.py
++++ b/tools/tts_tool_local.py
+@@ -9,4 +9,5 @@ from __future__ import annotations
+ 
+ import logging
++import re
+ import subprocess
+ import sys
+@@ -137,8 +138,35 @@ def _load_piper_voice_for_config(tts_config: Dict[str, Any]) -> Tuple[Any, Dict[
+ _PIPER_ADVANCED_KNOBS = ("length_scale", "noise_scale", "noise_w_scale", "volume", "normalize_audio", "speaker_id")
+ 
+ 
++def _piper_voice_for_text(text: str, piper_config: Dict[str, Any]) -> str | None:
++    """Choose a configured English/Spanish voice from the text itself.
++
++    This deliberately uses a tiny deterministic heuristic: installing a language model
++    just to route TTS would add latency and another runtime dependency. Ties keep the
++    configured default voice.
++    """
++    voices = piper_config.get("voices") or {}
++    if not isinstance(voices, dict):
++        return None
++    words = re.findall(r"[a-záéíóúüñ']+", text.lower())
++    es_words = {"a", "al", "como", "con", "de", "el", "en", "es", "esta", "este", "la", "las", "lo", "los", "para", "por", "que", "qué", "se", "si", "sí", "su", "te", "tu", "una", "y", "ya"}
++    en_words = {"a", "an", "and", "are", "as", "at", "be", "for", "from", "how", "i", "in", "is", "it", "of", "on", "that", "the", "this", "to", "what", "with", "you", "your"}
++    es_score = sum(word in es_words for word in words) + sum(ch in text.lower() for ch in "áéíóúüñ¿¡")
++    en_score = sum(word in en_words for word in words)
++    language = "en" if en_score > es_score else "es" if es_score > en_score else None
++    voice = voices.get(language) if language else None
++    return str(voice).strip() if voice else None
++
++
+ def _generate_piper_tts(text: str, output_path: str, tts_config: Dict[str, Any]) -> str:
+     import wave
++    piper_config = dict(_section(tts_config, "piper"))
++    selected_voice = _piper_voice_for_text(text, piper_config)
++    if selected_voice:
++        tts_config = dict(tts_config)
++        piper_config["voice"] = selected_voice
++        tts_config["piper"] = piper_config
++        logger.debug("[Piper] Selected bilingual voice %s", selected_voice)
+     voice, piper_config = _load_piper_voice_for_config(tts_config)
+     # Bad speaker_id drops to 0 (Piper's default); bools are rejected (they'd coerce to 1/0).
+     _raw_speaker = piper_config.get("speaker_id", 0)
+     speaker_id = _raw_speaker if type(_raw_speaker) is int else 0
