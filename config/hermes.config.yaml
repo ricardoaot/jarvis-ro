@@ -90,7 +90,7 @@ wake_word:
   # sesión en vez de empezar de cero en cada "hey hermes".
   start_new_session: false
   # ── Palancas contra falsos positivos (criterio de aceptación: <3 al día) ──
-  sensitivity: 0.6            # 0.0-1.0. MÁS ALTO = MÁS ESTRICTO. Sube a 0.8.
+  sensitivity: 0.4            # 0.0-1.0. MÁS ALTO = MÁS ESTRICTO. Sube si hay falsos positivos.
   confirmation_frames: 3      # frames consecutivos sobre umbral. Sube a 4-5.
   openwakeword:
     # hey_jarvis NO sirve aquí: entrenado con inglés, con voz española puntúa
