@@ -392,11 +392,19 @@ Así que el primer turno funciona (el grabador nació después de la última pau
 y del segundo en adelante graba silencio para siempre. Es también el origen del
 `PaMacCore err='-50'` de §2.8.
 
-**Arreglo** (en `patches/0001-wake-word-fixes.patch`): `_on_wake_word` tira el
-grabador antes de grabar (`shutdown()` + `_voice_recorder = None`) para que se
-construya con un stream nuevo. El miedo de upstream a reabrir no se sostiene
-aquí: medido, **0.19s, sin cuelgue y repetible**. Verificado con las clases de
-Hermes: reutilizando el grabador no captura nada; recreándolo, pico 1202.
+**Arreglo** (en `patches/0001-wake-word-fixes.patch`): se impide que los dos
+streams sobrevivan simultáneamente en ambos cambios de dueño del micrófono:
+
+- `_on_wake_word` tira el grabador anterior antes de empezar una captura;
+- al terminar esa captura de un solo turno, `_voice_stop_and_transcribe` cierra
+  y descarta el grabador antes de que el watchdog reactive el detector.
+
+La segunda mitad es necesaria: dejar el grabador detenido pero abierto mientras
+se reconstruye el detector produce `PaMacCore (AUHAL) err='-50'` y puede dejar
+mudo el detector después de la primera respuesta. El miedo de upstream a
+reabrir no se sostiene aquí: medido, **0.19s, sin cuelgue y repetible**.
+Verificado con las clases de Hermes: reutilizando el grabador no captura nada;
+recreándolo, pico 1202.
 
 Coste: 0.19s añadidos a cada activación por voz.
 

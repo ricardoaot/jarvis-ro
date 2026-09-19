@@ -1,8 +1,26 @@
 diff --git a/hermes_cli/cli_voice_mixin.py b/hermes_cli/cli_voice_mixin.py
-index 8f2b0eb..fafbdb3 100644
+index 8f2b0eb..bef76fd 100644
 --- a/hermes_cli/cli_voice_mixin.py
 +++ b/hermes_cli/cli_voice_mixin.py
-@@ -688,6 +688,12 @@ class CLIVoiceMixin:
+@@ -211,6 +211,17 @@ class CLIVoiceMixin:
+             if self._voice_recorder is None:
+                 return
+             wav_path = self._voice_recorder.stop()
++            # Wake-word turns are single-shot. Release their InputStream before the
++            # watchdog opens the detector again; keeping the stopped recorder alive
++            # alongside the new wake stream makes CoreAudio invalidate one callback
++            # (PaMacCore/AUHAL err=-50) after the first turn.
++            if getattr(self, "_wake_word_active", False) and not self._voice_continuous:
++                _rec = self._voice_recorder
++                self._voice_recorder = None
++                try:
++                    _rec.shutdown()
++                except Exception as e:
++                    logger.debug("wake word: post-capture recorder shutdown failed: %s", e)
+             # Audio cue: double beep after stream stopped (no CoreAudio conflict)
+             self._voice_beep(frequency=660, count=2)
+             if wav_path is None:
+@@ -688,6 +699,12 @@ class CLIVoiceMixin:
              logger.debug("wake word pause failed: %s", e)
              return
          self._wake_suspended = True
@@ -15,7 +33,7 @@ index 8f2b0eb..fafbdb3 100644
  
          # The CLI is single-profile: a phrase enrolled by ANOTHER profile can't be routed
          # here — print the switch command and re-arm rather than answer as the wrong profile.
-@@ -702,6 +708,7 @@ class CLIVoiceMixin:
+@@ -702,6 +719,7 @@ class CLIVoiceMixin:
                  _cprint(f"\n{_DIM}Wake phrase for profile '{_match[1]}' — "
                          f"run: hermes -p {_match[1]}{_RST}")
                  self._wake_suspended = True  # watchdog resumes the listener
@@ -23,7 +41,7 @@ index 8f2b0eb..fafbdb3 100644
                  return
  
          _cprint(f"\n{_ACCENT}✦ Wake word detected — listening...{_RST}")
-@@ -720,11 +727,39 @@ class CLIVoiceMixin:
+@@ -720,11 +738,39 @@ class CLIVoiceMixin:
          # Single-utterance capture; VAD auto-stop transcribes and queues for process_loop.
          with self._voice_lock:
              self._voice_mode = True
@@ -63,7 +81,7 @@ index 8f2b0eb..fafbdb3 100644
  
      def _start_wake_watchdog(self):
          """Resume the paused detector when the CLI returns to a stable idle."""
-@@ -745,6 +780,10 @@ class CLIVoiceMixin:
+@@ -745,6 +791,10 @@ class CLIVoiceMixin:
                          self._agent_running
                          or self._voice_recording
                          or getattr(self, "_voice_processing", False)
